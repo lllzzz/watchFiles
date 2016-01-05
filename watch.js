@@ -2,7 +2,6 @@
 /**
  * 监听文件变化小工具
  */
-
 var watch     = require('watch'),
     moment    = require('moment'),
     commander = require('commander');
@@ -10,7 +9,7 @@ var watch     = require('watch'),
 commander
   .version('0.0.1')
   .usage('[options] <file>')
-  .option('-r, --rootPath <path>', 'watch root path')
+  .option('-p, --rootPath <path>', 'watch root path')
   .parse(process.argv);
 
 var callbackModulePath = commander.args[0];
