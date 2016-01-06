@@ -4,12 +4,15 @@
  */
 var watch     = require('watch'),
     moment    = require('moment'),
-    commander = require('commander');
+    commander = require('commander'),
+    fs        = require('fs'),
+    daemon    = require('daemon');
 
 commander
   .version('0.0.1')
   .usage('[options] <file>')
   .option('-p, --rootPath <path>', 'watch root path')
+  .option('-l, --logPath <path>', 'log file path, default ')
   .parse(process.argv);
 
 var callbackModulePath = commander.args[0];
@@ -30,6 +33,29 @@ if (typeof userCallback !== 'function') {
     return;
 }
 
+var logPath = commander.logPath || '/usr/local/logs/';
+try {
+    var ret = fs.statSync(logPath);
+} catch (e) {
+    try {
+        ret = fs.mkdirSync(logPath);
+    } catch (e) {
+        console.log(e.toString())
+        return;
+    }
+}
+
+var logger = function (data) {
+    var time = moment().format('YYYYMMDD');
+    fs.appendFile(logPath + "writeFile_" + time + ".log", data + "\n", function(err) {
+        if (err) throw err;
+    })
+}
+
+// 转为守护
+daemon();
+fs.writeFile('./writeFile.pid', process.pid)
+
 watch.watchTree(rootPath, function (f, curr, prev) {
     var time    = moment().format('YYYY/MM/DD HH:mm:ss'),
         path    = f.toString();
@@ -38,7 +64,8 @@ watch.watchTree(rootPath, function (f, curr, prev) {
     } else if (prev === null) {      // f is a new file
     } else if (curr.nlink === 0) {      // f was removed
     } else {      // f was changed
-        console.log('[' + time + ']CHANGED_FILE: ' + path);
+        // console.log('[' + time + ']CHANGED_FILE: ' + path);
+        logger('[' + time + ']CHANGED_FILE: ' + path);
         userCallback();
     }
 });
