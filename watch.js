@@ -8,12 +8,38 @@ var watch     = require('watch'),
     fs        = require('fs'),
     daemon    = require('daemon');
 
+var isStop = false,
+    logFile = 'watchFile_';
+
 commander
   .version('0.0.1')
   .usage('[options] <file>')
-  .option('-p, --rootPath <path>', 'watch root path')
-  .option('-l, --logPath <path>', 'log file path, default ')
+  .option('-w, --watchPath <path>', 'watch root path')
+  .option('-l, --logPath <path>', 'log file path')
+  .option('-p, --pidPath <path>', 'pid file path')
+  .arguments('[cmd]', 'cmd')
+  .action(function(cmd) {
+    isStop = cmd === 'stop' ? true : false;
+  })
   .parse(process.argv);
+
+// stop service
+if (!!isStop) {
+    var pidPath = commander.pidPath || './writeFile.pid';
+    try {
+        var pid = fs.readFileSync(pidPath, {encoding: 'utf8'});
+        try {
+            process.kill(pid);
+        } catch (e) {
+            console.error(e.toString());
+        }
+        fs.unlinkSync(pidPath)
+        process.exit();
+    } catch (e) {
+        console.error(e.toString());
+        process.exit();
+    }
+}
 
 var callbackModulePath = commander.args[0];
 if (!callbackModulePath) {
@@ -21,9 +47,9 @@ if (!callbackModulePath) {
     return;
 }
 
-var rootPath = commander.rootPath;
-if (!rootPath) {
-    console.log('ERROR: rootPath lost');
+var watchPath = commander.watchPath;
+if (!watchPath) {
+    console.log('ERROR: watchPath lost');
     return;
 }
 
@@ -47,7 +73,7 @@ try {
 
 var logger = function (data) {
     var time = moment().format('YYYYMMDD');
-    fs.appendFile(logPath + "writeFile_" + time + ".log", data + "\n", function(err) {
+    fs.appendFile(logPath + logFile + time + ".log", data + "\n", function(err) {
         if (err) throw err;
     })
 }
@@ -56,16 +82,17 @@ var logger = function (data) {
 daemon();
 fs.writeFile('./writeFile.pid', process.pid)
 
-watch.watchTree(rootPath, function (f, curr, prev) {
+watch.watchTree(watchPath, function (f, curr, prev) {
     var time    = moment().format('YYYY/MM/DD HH:mm:ss'),
         path    = f.toString();
 
     if (typeof f == "object" && prev === null && curr === null) {      // Finished walking the tree
     } else if (prev === null) {      // f is a new file
     } else if (curr.nlink === 0) {      // f was removed
-    } else {      // f was changed
+    } else {// f was changed
         // console.log('[' + time + ']CHANGED_FILE: ' + path);
+        if (path.indexOf(logFile) !== -1) return;
         logger('[' + time + ']CHANGED_FILE: ' + path);
-        userCallback();
+        userCallback(path);
     }
 });
