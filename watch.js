@@ -23,9 +23,11 @@ commander
   })
   .parse(process.argv);
 
+var pidPath = commander.pidPath || './writeFile.pid';
+
 // stop service
 if (!!isStop) {
-    var pidPath = commander.pidPath || './writeFile.pid';
+
     try {
         var pid = fs.readFileSync(pidPath, {encoding: 'utf8'});
         try {
@@ -80,7 +82,7 @@ var logger = function (data) {
 
 // 转为守护
 daemon();
-fs.writeFile('./writeFile.pid', process.pid)
+fs.writeFile(pidPath, process.pid)
 
 watch.watchTree(watchPath, function (f, curr, prev) {
     var time    = moment().format('YYYY/MM/DD HH:mm:ss'),
